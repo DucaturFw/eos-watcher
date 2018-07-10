@@ -1,0 +1,33 @@
+{
+  "name": "eos-watcher",
+  "version": "0.0.1",
+  "description": "EOS.io watcher",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "run": "yarn run build && node ./lib/index.js",
+    "live": "nodemon -i lib -e ts --exec yarn run run"
+  },
+  "author": "Aler Denisov <aler.zampillo@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/deep-equal": "^1.0.1",
+    "@types/dotenv": "^4.0.3",
+    "@types/rethinkdb": "^2.3.11",
+    "@types/signale": "^1.2.0",
+    "axios": "^0.18.0",
+    "deep-equal": "^1.0.1",
+    "dotenv": "^6.0.0",
+    "eoscontracts": "^0.0.1",
+    "eosjs": "^15.0.3",
+    "inversify": "^4.13.0",
+    "reflect-metadata": "^0.1.12",
+    "rethinkdb": "^2.3.3",
+    "signale": "^1.2.1",
+    "typescript": "^2.9.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.17.5"
+  }
+}
