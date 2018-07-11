@@ -8,6 +8,7 @@ export interface IRethinkStateOptions {
   rethinkPort: number;
   rethinkDatabase: string;
   rethinkTable: string;
+  clear: boolean;
 }
 export interface IBalanceTable {
   [holderAndBalance: string]: IBalance;
@@ -54,6 +55,7 @@ export default class RethinkState implements IState {
       rethinkPort: 28015,
       rethinkDatabase: "eos",
       rethinkTable: "balances",
+      clear: false,
       ...providenOptions
     };
   }
@@ -126,10 +128,13 @@ export default class RethinkState implements IState {
     });
 
     await this.checkOrCreateDatabase(this.options.rethinkDatabase);
-    await this.dropTable(
-      this.options.rethinkDatabase,
-      this.options.rethinkTable
-    );
+
+    if (this.options.clear) {
+      await this.dropTable(
+        this.options.rethinkDatabase,
+        this.options.rethinkTable
+      );
+    }
     await this.checkOrCreateTable(
       this.options.rethinkDatabase,
       this.options.rethinkTable
