@@ -2,7 +2,6 @@ import axios, { AxiosInstance } from "axios";
 import types, { IChainApi, IHolder, IBalance, ILogger } from "./types";
 import { injectable, inject } from "inversify";
 import Eos from 'eosjs'
-const eos = new Eos({})
 
 export interface IChainApiOptions {
   timeout: number;
@@ -33,9 +32,11 @@ export default class ChainApi implements IChainApi {
   nodes!: string[];
   axios: AxiosInstance;
   logger: ILogger;
+    eos: Eos;
   constructor(
     @inject(types.Options) opts: { chainApi: any },
     @inject(types.Logger) logger: ILogger) {
+      this.eos = new Eos({})
       this.logger = logger;
       this.options = {
         timeout: 1000,
@@ -60,7 +61,7 @@ export default class ChainApi implements IChainApi {
       limit: this.options.tableRowsLimit,
       ...opts
     }).then(responce => {
-      return responce.rows.map(name => eos.fc.fromBuffer('name', name))
+      return responce.rows.map(name => this.eos.fc.fromBuffer('name', name))
     })
   }
 
@@ -77,7 +78,7 @@ export default class ChainApi implements IChainApi {
       ...opts
     })
     .then(responce => {
-      return responce.rows.map(name => eos.fc.fromBuffer('asset', name) as string)
+      return responce.rows.map(name => this.eos.fc.fromBuffer('asset', name) as string)
     })
     .then(assets => assets.find(asset => asset.endsWith(symbol)) as string)
     .then(asset => ({
