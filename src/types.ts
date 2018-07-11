@@ -36,6 +36,8 @@ export interface IOptions {
     rethinkPort: number;
     rethinkDatabase: string;
     rethinkTable: string;
+
+    clear: boolean;
   }>;
 
   chainApi?: any;
