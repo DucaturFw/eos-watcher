@@ -2,22 +2,22 @@ import types, { ILogger } from "../types";
 import { injectable, inject } from "inversify";
 
 export interface IMockLog {
-  message: string
-  args: any[]
+  message: string;
+  args: any[];
 }
 
 @injectable()
 export default class MockLogger implements ILogger {
-  channels!: { 
-    [channel: string]: IMockLog[]
-  }
+  channels: {
+    [channel: string]: IMockLog[];
+  } = {};
 
   private storeLog(channel: string, log: IMockLog) {
-    if (this.channels[channel]) {
-      this.channels[channel] = []
+    if (!this.channels[channel]) {
+      this.channels[channel] = [];
     }
-    
-    this.channels[channel].push(log)
+
+    this.channels[channel].push(log);
   }
 
   debug(message: string, ...args: any[]): void {
