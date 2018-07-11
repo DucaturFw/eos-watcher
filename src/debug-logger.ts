@@ -13,7 +13,7 @@ export default class DebugLogger implements ILogger {
     fatal: boolean;
   };
 
-  constructor(@inject(types.AppOptions) opts: { logger: any }) {
+  constructor(@inject(types.Options) opts: { logger: any }) {
     const { debug, log, info, warning, error, fatal } = opts.logger;
     this.options = {
       debug,
