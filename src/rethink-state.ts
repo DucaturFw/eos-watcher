@@ -45,7 +45,7 @@ export default class RethinkState implements IState {
 
   constructor(
     @inject(types.Logger) logger: ILogger,
-    @inject(types.AppOptions) opts: { state: any }
+    @inject(types.Options) opts: { state: any }
   ) {
     const providenOptions = opts.state;
     this.logger = logger;

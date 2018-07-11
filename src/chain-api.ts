@@ -34,7 +34,7 @@ export default class ChainApi implements IChainApi {
   axios: AxiosInstance;
   logger: ILogger;
   constructor(
-    @inject(types.AppOptions) opts: { chainApi: any },
+    @inject(types.Options) opts: { chainApi: any },
     @inject(types.Logger) logger: ILogger) {
       this.logger = logger;
       this.options = {
@@ -90,7 +90,6 @@ export default class ChainApi implements IChainApi {
   async setup() {
   }
   async close() {
-    throw new Error("Method not implemented.");
   }
 
   private randomNodes(num: number): string[] {

@@ -53,7 +53,7 @@ export interface ILogger {
 
 export default {
   App: Symbol("App"),
-  AppOptions: Symbol("AppOptions"),
+  Options: Symbol("AppOptions"),
   Logger: Symbol("Logger"),
   ChainApi: Symbol("ChainApi"),
   State: Symbol("State")

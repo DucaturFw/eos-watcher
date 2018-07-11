@@ -13,7 +13,7 @@ container.bind<ILogger>(types.Logger).to(DebugLogger);
 container.bind<IApp>(types.App).to(App);
 container.bind<IChainApi>(types.ChainApi).to(ChainApi);
 container.bind<IState>(types.State).to(RethinkState);
-container.bind<IOptions>(types.AppOptions).toConstantValue({
+container.bind<IOptions>(types.Options).toConstantValue({
   app: {
     sleepDuration: parseInt(process.env.SLEEP_DURATION || "5000")
   },

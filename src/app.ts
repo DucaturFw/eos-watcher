@@ -13,7 +13,7 @@ export default class App implements IApp {
   state: IState;
 
   constructor(
-    @inject(types.AppOptions) opts: { app: any },
+    @inject(types.Options) opts: { app: any },
     @inject(types.Logger) logger: ILogger,
     @inject(types.ChainApi) api: IChainApi,
     @inject(types.State) state: IState
