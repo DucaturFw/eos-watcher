@@ -1,8 +1,6 @@
 export type IHolder = string;
-
 export interface IBalance {
   holder: IHolder;
-  symbol: string;
   amount: number;
 }
 
@@ -13,25 +11,27 @@ export interface IService {
 
 export interface IApp extends IService {
   run(): Promise<void>;
-  loop(symbol: string): Promise<boolean>;
+  loop(): Promise<boolean>;
 }
 
 export interface IChainApi extends IService {
-  holders(symbol: string): Promise<IHolder[]>;
-  balances(symbol: string, holders: IHolder[]): Promise<IBalance[]>;
+  holders(): Promise<IHolder[]>;
+  balances(holders: IHolder[]): Promise<IBalance[]>;
 }
 
 export interface IState extends IService {
-  holders(symbol: string): Promise<IHolder[]>;
-  balances(symbol: string): Promise<IBalance[]>;
+  balances(): Promise<IBalance[]>;
   update(balances: IBalance[]): Promise<void>;
   clear(): Promise<void>;
 }
 
 export interface IOptions {
+  global?: Partial<{
+    symbol: string;
+  }>;
+
   app?: Partial<{
     sleepDuration: number;
-    symbol: string;
   }>;
 
   state?: Partial<{
