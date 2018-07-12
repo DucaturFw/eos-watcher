@@ -24,6 +24,7 @@ export interface IState extends IService {
   holders(symbol: string): Promise<IHolder[]>;
   balances(symbol: string): Promise<IBalance[]>;
   update(balances: IBalance[]): Promise<void>;
+  clear(): Promise<void>;
 }
 
 export interface IOptions {
@@ -36,7 +37,6 @@ export interface IOptions {
     rethinkPort: number;
     rethinkDatabase: string;
     rethinkTable: string;
-
     clear: boolean;
   }>;
 

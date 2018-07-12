@@ -119,6 +119,17 @@ export default class RethinkState implements IState {
     await this.table.insert(Object.values(providenState)).run(this.connection);
   }
 
+  async clear() {
+    await this.dropTable(
+      this.options.rethinkDatabase,
+      this.options.rethinkTable
+    );
+    await this.checkOrCreateTable(
+      this.options.rethinkDatabase,
+      this.options.rethinkTable
+    );
+  }
+
   async setup() {
     this.connection = await r.connect({
       host: this.options.rethinkHost,
