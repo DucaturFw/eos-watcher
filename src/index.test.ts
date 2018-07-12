@@ -87,9 +87,10 @@ describe("Eos Watcher", async () => {
 
     container = new Container();
     container.bind<IOptions>(types.Options).toConstantValue({
-      app: {
+      global: {
         symbol: "TST"
       },
+      app: {},
       state: {
         rethinkHost: "localhost",
         rethinkPort: 28015,
@@ -140,8 +141,8 @@ describe("Eos Watcher", async () => {
   describe("syncs with the blockchain", async () => {
     it("should be empty at begin", async () => {
       assert.isEmpty(
-        await chain().holders("TST"),
-        JSON.stringify(await chain().holders("TST"), null, 2)
+        await chain().holders(),
+        JSON.stringify(await chain().holders(), null, 2)
       );
     });
     it("should get minter as initial holder", async () => {
@@ -154,17 +155,17 @@ describe("Eos Watcher", async () => {
       });
 
       assert.lengthOf(
-        await chain().holders("TST"),
+        await chain().holders(),
         1,
         "length of holders isn't exact one"
       );
 
-      const holders = await chain().holders("TST");
+      const holders = await chain().holders();
       assert.equal(holders[0], "eosio");
     });
 
     it("should have exact 1M balance at eosio", async () => {
-      const balances = await chain().balances("TST", ["eosio"]);
+      const balances = await chain().balances(["eosio"]);
       assert.equal(1e6, balances[0].amount);
     });
 
@@ -173,21 +174,15 @@ describe("Eos Watcher", async () => {
         authorization: ["eosio"]
       });
 
-      assert.lengthOf(await chain().holders("TST"), 2);
+      assert.lengthOf(await chain().holders(), 2);
     });
 
     it("should change balances after transfer", async () => {
-      const balancesBefore = await chain().balances("TST", [
-        "eosio",
-        "account1"
-      ]);
+      const balancesBefore = await chain().balances(["eosio", "account1"]);
       await token.transfer("eosio", "account1", "1000.0000 TST", "account1-2", {
         authorization: ["eosio"]
       });
-      const balancesAfter = await chain().balances("TST", [
-        "eosio",
-        "account1"
-      ]);
+      const balancesAfter = await chain().balances(["eosio", "account1"]);
       assert.notEqual(balancesAfter, balancesBefore);
 
       assert.equal(1e6 - 2e3, balancesAfter[0].amount);
@@ -195,7 +190,7 @@ describe("Eos Watcher", async () => {
     });
 
     it("it should be null at begin", async () => {
-      const balances = await state().balances("TST");
+      const balances = await state().balances();
       assert.lengthOf(
         balances,
         0,
@@ -204,13 +199,10 @@ describe("Eos Watcher", async () => {
     });
 
     it("should allow to update persistent state", async () => {
-      const chainBalances = await chain().balances(
-        "TST",
-        await chain().holders("TST")
-      );
+      const chainBalances = await chain().balances(await chain().holders());
 
       await state().update(chainBalances);
-      const stateBalances = await state().balances("TST");
+      const stateBalances = await state().balances();
 
       assert.isTrue(
         deep(
@@ -218,13 +210,13 @@ describe("Eos Watcher", async () => {
             delete (state as any).id;
             return state;
           }),
-          await chain().balances("TST", await chain().holders("TST"))
+          await chain().balances(await chain().holders())
         )
       );
     });
     it("should update balance", async () => {
       // state before changes
-      const stateBalancesBefore = (await state().balances("TST")).reduce(
+      const stateBalancesBefore = (await state().balances()).reduce(
         (balances, state) => {
           balances[state.holder] = state.amount;
           return balances;
@@ -238,13 +230,10 @@ describe("Eos Watcher", async () => {
       });
 
       // update state
-      const chainBalances = await chain().balances(
-        "TST",
-        await chain().holders("TST")
-      );
+      const chainBalances = await chain().balances(await chain().holders());
       await state().update(chainBalances);
 
-      const stateBalancesAfter = (await state().balances("TST")).reduce(
+      const stateBalancesAfter = (await state().balances()).reduce(
         (balances, state) => {
           balances[state.holder] = state.amount;
           return balances;
@@ -264,7 +253,7 @@ describe("Eos Watcher", async () => {
     });
 
     it("should update state in app loop", async () => {
-      const stateBalancesBefore = (await state().balances("TST")).reduce(
+      const stateBalancesBefore = (await state().balances()).reduce(
         (balances, state) => {
           balances[state.holder] = state.amount;
           return balances;
@@ -275,9 +264,9 @@ describe("Eos Watcher", async () => {
         authorization: ["eosio"]
       });
 
-      await app().loop("TST");
+      await app().loop();
 
-      const stateBalancesAfter = (await state().balances("TST")).reduce(
+      const stateBalancesAfter = (await state().balances()).reduce(
         (balances, state) => {
           balances[state.holder] = state.amount;
           return balances;
@@ -300,8 +289,8 @@ describe("Eos Watcher", async () => {
       await token.transfer("eosio", "account2", "1000.0000 TST", "account2-1", {
         authorization: ["eosio"]
       });
-      await app().loop("TST");
-      const stateHolders = await state().holders("TST");
+      await app().loop();
+      const stateHolders = await state().balances();
       assert.lengthOf(stateHolders, 3);
     });
   });
