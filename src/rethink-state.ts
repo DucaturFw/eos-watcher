@@ -40,10 +40,6 @@ export default class RethinkState implements IState {
     return this.table.orderBy("amount");
   }
 
-  private get balanceHolders() {
-    return this.table.getField("holder");
-  }
-
   constructor(
     @inject(types.Logger) logger: ILogger,
     @inject(types.Options) opts: { state: any }
@@ -64,10 +60,12 @@ export default class RethinkState implements IState {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
-    const cursor = await this.balanceHolders
+
+    const cursor = await this.table
       .filter(r.row("symbol").eq(symbol))
+      .getField("holder")
       .run(this.connection);
-    return (await cursor.toArray()) as string[];
+    return cursor.toArray();
   }
 
   async balances(symbol: string): Promise<IBalance[]> {
