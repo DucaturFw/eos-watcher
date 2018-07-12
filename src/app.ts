@@ -3,7 +3,6 @@ import types, { IApp, IOptions, ILogger, IChainApi, IState } from "./types";
 
 export interface IAppOptions {
   sleepDuration: number;
-  symbol: string;
 }
 
 @injectable()
@@ -19,11 +18,9 @@ export default class App implements IApp {
     @inject(types.ChainApi) api: IChainApi,
     @inject(types.State) state: IState
   ) {
-    const providenOptions = opts.app;
     this.options = {
       sleepDuration: 500,
-      symbol: "DUCAT",
-      ...providenOptions
+      ...opts.app
     };
 
     this.logger = logger;
@@ -42,9 +39,15 @@ export default class App implements IApp {
     process.exit();
   }
 
-  async loop(symbol: string): Promise<boolean> {
-    const holders = await this.api.holders(symbol);
-    const balances = await this.api.balances(symbol, holders);
+  async loop(): Promise<boolean> {
+    const holders = await this.api.holders();
+    JSON.stringify(holders, null, 2)
+      .split("\n")
+      .forEach(line => this.logger.debug(line));
+    const balances = await this.api.balances(holders);
+    JSON.stringify(balances, null, 2)
+      .split("\n")
+      .forEach(line => this.logger.debug(line));
     await this.state.update(balances);
     return true;
   }
@@ -54,7 +57,7 @@ export default class App implements IApp {
       this.logger.log("Running eos watcher application...");
       await this.setup();
 
-      while (await this.loop(this.options.symbol)) {
+      while (await this.loop()) {
         await new Promise(resolve =>
           setTimeout(resolve, this.options.sleepDuration)
         );
