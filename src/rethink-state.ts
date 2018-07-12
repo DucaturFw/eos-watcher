@@ -8,6 +8,7 @@ export interface IRethinkStateOptions {
   rethinkPort: number;
   rethinkDatabase: string;
   rethinkTable: string;
+  clear: boolean;
 }
 export interface IBalanceTable {
   [holderAndBalance: string]: IBalance;
@@ -39,10 +40,6 @@ export default class RethinkState implements IState {
     return this.table.orderBy("amount");
   }
 
-  private get balanceHolders() {
-    return this.table.getField("holder");
-  }
-
   constructor(
     @inject(types.Logger) logger: ILogger,
     @inject(types.Options) opts: { state: any }
@@ -54,6 +51,7 @@ export default class RethinkState implements IState {
       rethinkPort: 28015,
       rethinkDatabase: "eos",
       rethinkTable: "balances",
+      clear: false,
       ...providenOptions
     };
   }
@@ -62,10 +60,12 @@ export default class RethinkState implements IState {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
-    const cursor = await this.balanceHolders
+
+    const cursor = await this.table
       .filter(r.row("symbol").eq(symbol))
+      .getField("holder")
       .run(this.connection);
-    return (await cursor.toArray()) as string[];
+    return cursor.toArray();
   }
 
   async balances(symbol: string): Promise<IBalance[]> {
@@ -119,6 +119,17 @@ export default class RethinkState implements IState {
     await this.table.insert(Object.values(providenState)).run(this.connection);
   }
 
+  async clear() {
+    await this.dropTable(
+      this.options.rethinkDatabase,
+      this.options.rethinkTable
+    );
+    await this.checkOrCreateTable(
+      this.options.rethinkDatabase,
+      this.options.rethinkTable
+    );
+  }
+
   async setup() {
     this.connection = await r.connect({
       host: this.options.rethinkHost,
@@ -126,10 +137,13 @@ export default class RethinkState implements IState {
     });
 
     await this.checkOrCreateDatabase(this.options.rethinkDatabase);
-    await this.dropTable(
-      this.options.rethinkDatabase,
-      this.options.rethinkTable
-    );
+
+    if (this.options.clear) {
+      await this.dropTable(
+        this.options.rethinkDatabase,
+        this.options.rethinkTable
+      );
+    }
     await this.checkOrCreateTable(
       this.options.rethinkDatabase,
       this.options.rethinkTable

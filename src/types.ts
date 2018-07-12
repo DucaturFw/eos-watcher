@@ -13,6 +13,7 @@ export interface IService {
 
 export interface IApp extends IService {
   run(): Promise<void>;
+  loop(symbol: string): Promise<boolean>;
 }
 
 export interface IChainApi extends IService {
@@ -24,11 +25,13 @@ export interface IState extends IService {
   holders(symbol: string): Promise<IHolder[]>;
   balances(symbol: string): Promise<IBalance[]>;
   update(balances: IBalance[]): Promise<void>;
+  clear(): Promise<void>;
 }
 
 export interface IOptions {
   app?: Partial<{
     sleepDuration: number;
+    symbol: string;
   }>;
 
   state?: Partial<{
@@ -36,10 +39,13 @@ export interface IOptions {
     rethinkPort: number;
     rethinkDatabase: string;
     rethinkTable: string;
+    clear: boolean;
   }>;
 
   chainApi?: any;
   logger?: any;
+
+  symbols?: string[];
 }
 
 export interface ILogger {

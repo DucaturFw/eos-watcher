@@ -7,7 +7,7 @@
     "build": "tsc",
     "run": "yarn run build && node ./lib/index.js",
     "live": "nodemon -i lib -e ts --exec yarn run run",
-    "test": "mocha -r ts-node/register src/**/*.test.ts"
+    "test": "mocha -r ts-node/register -t 20000 src/**/*.test.ts"
   },
   "author": "Aler Denisov <aler.zampillo@gmail.com>",
   "license": "MIT",
@@ -32,6 +32,7 @@
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.4",
     "chai": "^4.1.2",
+    "eosic": "^0.0.1",
     "mocha": "^5.2.0",
     "nodemon": "^1.17.5",
     "ts-node": "^7.0.0"

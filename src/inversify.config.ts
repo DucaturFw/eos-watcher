@@ -9,10 +9,22 @@ import RethinkState from "./rethink-state";
 config();
 
 const container = new Container();
-container.bind<ILogger>(types.Logger).to(DebugLogger);
-container.bind<IApp>(types.App).to(App);
-container.bind<IChainApi>(types.ChainApi).to(ChainApi);
-container.bind<IState>(types.State).to(RethinkState);
+container
+  .bind<ILogger>(types.Logger)
+  .to(DebugLogger)
+  .inSingletonScope();
+container
+  .bind<IApp>(types.App)
+  .to(App)
+  .inSingletonScope();
+container
+  .bind<IChainApi>(types.ChainApi)
+  .to(ChainApi)
+  .inSingletonScope();
+container
+  .bind<IState>(types.State)
+  .to(RethinkState)
+  .inSingletonScope();
 container.bind<IOptions>(types.Options).toConstantValue({
   app: {
     sleepDuration: parseInt(process.env.SLEEP_DURATION || "5000")
@@ -38,6 +50,8 @@ container.bind<IOptions>(types.Options).toConstantValue({
       ].join(","),
     tokenContract: process.env.TOKEN_CONTRACT || "ducaturtoken"
   },
+
+  symbols: ["DUCAT"],
 
   logger: (process.env.DEBUG || "info,warning,error,fatal").split(",").reduce((
     acc,
