@@ -1,6 +1,5 @@
 import "reflect-metadata";
 import axios, { AxiosInstance } from "axios";
-import r, { Connection } from "rethinkdb";
 import { describe, it, before, beforeEach } from "mocha";
 import { assert } from "chai";
 import types, { IOptions, ILogger, IChainApi, IState } from "./types";
@@ -11,6 +10,7 @@ import RethinkState from "./rethink-state";
 import { start, createContract, EosProject } from "eosic";
 import * as path from "path";
 import Eos from "eosjs";
+import deep from "deep-equal";
 
 describe("Eos Watcher", async () => {
   // process.env.CHAIN_ENDPOINT = '127.0.0.1:8888'
@@ -74,16 +74,12 @@ describe("Eos Watcher", async () => {
     tokenAccount = account;
 
     container = new Container();
-    container.bind<ILogger>(types.Logger).to(MockLogger);
-    container.bind<IChainApi>(types.ChainApi).to(ChainApi);
-    container.bind<IState>(types.State).to(RethinkState);
     container.bind<IOptions>(types.Options).toConstantValue({
       state: {
         rethinkHost: "localhost",
         rethinkPort: 28015,
         rethinkDatabase: "eostest",
         rethinkTable: "balances",
-
         clear: true
       },
       chainApi: {
@@ -99,17 +95,21 @@ describe("Eos Watcher", async () => {
         fatal: true
       }
     });
+    container
+      .bind<ILogger>(types.Logger)
+      .to(MockLogger)
+      .inSingletonScope();
+    container
+      .bind<IChainApi>(types.ChainApi)
+      .to(ChainApi)
+      .inSingletonScope();
+    container
+      .bind<IState>(types.State)
+      .to(RethinkState)
+      .inSingletonScope();
 
     await chain().setup();
     await state().setup();
-
-    // // Check rethink availability
-    let connection = await r.connect({
-      host: options().state!.rethinkHost,
-      port: options().state!.rethinkPort
-    });
-
-    connection.close();
   });
 
   after(async () => {
@@ -155,6 +155,53 @@ describe("Eos Watcher", async () => {
       });
 
       assert.lengthOf(await chain().holders("TST"), 2);
+    });
+
+    it("should change balances after transfer", async () => {
+      const balancesBefore = await chain().balances("TST", [
+        "eosio",
+        "account1"
+      ]);
+      await token.transfer("eosio", "account1", "1000.0000 TST", "account1-2", {
+        authorization: ["eosio"]
+      });
+      const balancesAfter = await chain().balances("TST", [
+        "eosio",
+        "account1"
+      ]);
+      assert.notEqual(balancesAfter, balancesBefore);
+
+      assert.equal(1e6 - 2e3, balancesAfter[0].amount);
+      assert.equal(2e3, balancesAfter[1].amount);
+    });
+
+    it("it should be null at begin", async () => {
+      const balances = await state().balances("TST");
+      assert.lengthOf(
+        balances,
+        0,
+        "unxpected balances: " + JSON.stringify(balances)
+      );
+    });
+
+    it("should allow to update persistent state", async () => {
+      const chainBalances = await chain().balances(
+        "TST",
+        await chain().holders("TST")
+      );
+
+      await state().update(chainBalances);
+      const stateBalances = await state().balances("TST");
+
+      assert.isTrue(
+        deep(
+          stateBalances.map(state => {
+            delete (state as any).id;
+            return state;
+          }),
+          await chain().balances("TST", await chain().holders("TST"))
+        )
+      );
     });
   });
   it("should pass", async () => {});
