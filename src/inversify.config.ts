@@ -51,6 +51,8 @@ container.bind<IOptions>(types.Options).toConstantValue({
     tokenContract: process.env.TOKEN_CONTRACT || "ducaturtoken"
   },
 
+  symbols: ["DUCAT"],
+
   logger: (process.env.DEBUG || "info,warning,error,fatal").split(",").reduce((
     acc,
     channel

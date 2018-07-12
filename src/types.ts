@@ -13,6 +13,7 @@ export interface IService {
 
 export interface IApp extends IService {
   run(): Promise<void>;
+  loop(symbol: string): Promise<boolean>;
 }
 
 export interface IChainApi extends IService {
@@ -30,6 +31,7 @@ export interface IState extends IService {
 export interface IOptions {
   app?: Partial<{
     sleepDuration: number;
+    symbol: string;
   }>;
 
   state?: Partial<{
@@ -42,6 +44,8 @@ export interface IOptions {
 
   chainApi?: any;
   logger?: any;
+
+  symbols?: string[];
 }
 
 export interface ILogger {

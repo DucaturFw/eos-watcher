@@ -2,7 +2,14 @@ import "reflect-metadata";
 import axios, { AxiosInstance } from "axios";
 import { describe, it, before, beforeEach } from "mocha";
 import { assert } from "chai";
-import types, { IOptions, ILogger, IChainApi, IState } from "./types";
+import types, {
+  IOptions,
+  ILogger,
+  IChainApi,
+  IState,
+  IBalance,
+  IApp
+} from "./types";
 import { Container } from "inversify";
 import MockLogger from "./mock/mock-logger";
 import ChainApi from "./chain-api";
@@ -11,6 +18,7 @@ import { start, createContract, EosProject } from "eosic";
 import * as path from "path";
 import Eos from "eosjs";
 import deep from "deep-equal";
+import App from "./app";
 
 describe("Eos Watcher", async () => {
   // process.env.CHAIN_ENDPOINT = '127.0.0.1:8888'
@@ -31,6 +39,10 @@ describe("Eos Watcher", async () => {
 
   function state(): IState {
     return container.get<IState>(types.State);
+  }
+
+  function app(): IApp {
+    return container.get<IApp>(types.App);
   }
 
   before(async () => {
@@ -75,6 +87,9 @@ describe("Eos Watcher", async () => {
 
     container = new Container();
     container.bind<IOptions>(types.Options).toConstantValue({
+      app: {
+        symbol: "TST"
+      },
       state: {
         rethinkHost: "localhost",
         rethinkPort: 28015,
@@ -106,6 +121,10 @@ describe("Eos Watcher", async () => {
     container
       .bind<IState>(types.State)
       .to(RethinkState)
+      .inSingletonScope();
+    container
+      .bind<IApp>(types.App)
+      .to(App)
       .inSingletonScope();
 
     await chain().setup();
@@ -203,6 +222,87 @@ describe("Eos Watcher", async () => {
         )
       );
     });
+    it("should update balance", async () => {
+      // state before changes
+      const stateBalancesBefore = (await state().balances("TST")).reduce(
+        (balances, state) => {
+          balances[state.holder] = state.amount;
+          return balances;
+        },
+        {} as { [holder: string]: number }
+      );
+
+      // make transaction
+      await token.transfer("eosio", "account1", "1000.0000 TST", "account1-3", {
+        authorization: ["eosio"]
+      });
+
+      // update state
+      const chainBalances = await chain().balances(
+        "TST",
+        await chain().holders("TST")
+      );
+      await state().update(chainBalances);
+
+      const stateBalancesAfter = (await state().balances("TST")).reduce(
+        (balances, state) => {
+          balances[state.holder] = state.amount;
+          return balances;
+        },
+        {} as { [holder: string]: number }
+      );
+
+      assert.equal(
+        stateBalancesAfter["account1"],
+        stateBalancesBefore["account1"] + 1000
+      );
+
+      assert.equal(
+        stateBalancesAfter["eosio"],
+        stateBalancesBefore["eosio"] - 1000
+      );
+    });
+
+    it("should update state in app loop", async () => {
+      const stateBalancesBefore = (await state().balances("TST")).reduce(
+        (balances, state) => {
+          balances[state.holder] = state.amount;
+          return balances;
+        },
+        {} as { [holder: string]: number }
+      );
+      await token.transfer("eosio", "account1", "1000.0000 TST", "account1-4", {
+        authorization: ["eosio"]
+      });
+
+      await app().loop("TST");
+
+      const stateBalancesAfter = (await state().balances("TST")).reduce(
+        (balances, state) => {
+          balances[state.holder] = state.amount;
+          return balances;
+        },
+        {} as { [holder: string]: number }
+      );
+
+      assert.equal(
+        stateBalancesAfter["account1"],
+        stateBalancesBefore["account1"] + 1000
+      );
+
+      assert.equal(
+        stateBalancesAfter["eosio"],
+        stateBalancesBefore["eosio"] - 1000
+      );
+    });
+
+    it("should insert new holder", async () => {
+      await token.transfer("eosio", "account2", "1000.0000 TST", "account2-1", {
+        authorization: ["eosio"]
+      });
+      await app().loop("TST");
+      const stateHolders = await state().holders("TST");
+      assert.lengthOf(stateHolders, 3);
+    });
   });
-  it("should pass", async () => {});
 });
