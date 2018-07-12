@@ -20,13 +20,13 @@ export default class RethinkState implements IState {
   logger: ILogger;
   connection?: Connection;
 
-  private reduceArrayToTable(array: IBalance[]) {
-    return array.reduce<IBalanceTable>(this.reduceArrayToTableFunc, {});
-  }
-  private reduceArrayToTableFunc(table: IBalanceTable, balance: IBalance) {
-    table[balance.holder + balance.symbol] = balance;
-    return table;
-  }
+  // private reduceArrayToTable(array: IBalance[]) {
+  //   return array.reduce<IBalanceTable>(this.reduceArrayToTableFunc, {});
+  // }
+  // private reduceArrayToTableFunc(table: IBalanceTable, balance: IBalance) {
+  //   table[balance.holder + balance.symbol] = balance;
+  //   return table;
+  // }
 
   private get db() {
     return r.db(this.options.rethinkDatabase);
@@ -36,9 +36,9 @@ export default class RethinkState implements IState {
     return this.db.table(this.options.rethinkTable);
   }
 
-  private get balancesByAmount() {
-    return this.table.orderBy("amount");
-  }
+  // private get balancesByAmount() {
+  //   return this.table.orderBy("amount");
+  // }
 
   constructor(
     @inject(types.Logger) logger: ILogger,
@@ -56,67 +56,73 @@ export default class RethinkState implements IState {
     };
   }
 
-  async holders(symbol: string): Promise<string[]> {
+  async holders(): Promise<IHolder[]> {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
 
-    const cursor = await this.table
-      .filter(r.row("symbol").eq(symbol))
-      .getField("holder")
-      .run(this.connection);
+    const cursor = await this.table.run(this.connection);
     return cursor.toArray();
   }
 
-  async balances(symbol: string): Promise<IBalance[]> {
+  async balances(holder: IHolder | string): Promise<IBalance[]> {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
-    return (await this.balancesByAmount
-      .filter(r.row("symbol").eq(symbol))
-      .run(this.connection)).toArray();
+
+    const key = typeof holder === "string" ? holder : holder.name;
+
+    // TODO: pull request to @types/rethinkdb
+    return (this.table.get<IHolder>(key) as any)("balances").run(
+      this.connection
+    );
   }
 
-  async update(balances: IBalance[]) {
+  async update(holders: IHolder[]) {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
 
-    let a = await this.table.run(this.connection);
-    let b = await a.toArray<IBalance>();
-    this.logger.debug(JSON.stringify(b, null, 2));
-    let state = b
-      .map((item: any) => {
-        delete item.id;
-        return item;
-      })
-      .reduce(this.reduceArrayToTableFunc, {} as IBalanceTable);
-    let providenState = this.reduceArrayToTable(balances);
+    await this.table.insert(holders, {
+      conflict: "replace"
+    });
+    // await this.table.update(holders)
 
-    this.logger.debug(state);
+    // let a = await this.table.run(this.connection);
+    // let b = await a.toArray<IBalance>();
+    // this.logger.debug(JSON.stringify(b, null, 2));
+    // let state = b
+    //   .map((item: any) => {
+    //     delete item.id;
+    //     return item;
+    //   })
+    //   .reduce(this.reduceArrayToTableFunc, {} as IBalanceTable);
+    // let providenState = this.reduceArrayToTable(balances);
 
-    for (let key in state) {
-      if (!providenState[key]) {
-        //assert
-        throw new Error("WTF? Where is holder? :)");
-      }
+    // this.logger.debug(state);
 
-      if (!deep(state[key], providenState[key])) {
-        this.logger.info(`Update holder ${state[key].holder} balance`);
-        await this.table
-          .filter({
-            holder: providenState[key].holder,
-            symbol: providenState[key].symbol
-          })
-          .update(providenState[key])
-          .run(this.connection);
-      }
+    // for (let key in state) {
+    //   if (!providenState[key]) {
+    //     //assert
+    //     throw new Error("WTF? Where is holder? :)");
+    //   }
 
-      delete providenState[key];
-    }
+    //   if (!deep(state[key], providenState[key])) {
+    //     this.logger.info(`Update holder ${state[key].holder} balance`);
+    //     await this.table
+    //       .filter({
+    //         holder: providenState[key].holder,
+    //         symbol: providenState[key].symbol
+    //       })
+    //       .update(providenState[key])
+    //       .run(this.connection);
+    //   }
 
-    this.logger.info(`Insert ${Object.keys(providenState).length} balances`);
-    await this.table.insert(Object.values(providenState)).run(this.connection);
+    //   delete providenState[key];
+    // }
+
+    // this.logger.info(`Insert ${Object.keys(providenState).length} balances`);
+    // await this.table.insert(Object.values(providenState)).run(this.connection);
   }
 
   async clear() {
@@ -180,7 +186,9 @@ export default class RethinkState implements IState {
     if (availableTables.indexOf(table) === -1) {
       await r
         .db(db)
-        .tableCreate(table)
+        .tableCreate(table, {
+          primary_key: "name"
+        })
         .run(this.connection);
     }
   }

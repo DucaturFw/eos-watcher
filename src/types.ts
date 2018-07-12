@@ -1,7 +1,9 @@
-export type IHolder = string;
+export interface IHolder {
+  name: string;
+  balances?: IBalance[];
+}
 
 export interface IBalance {
-  holder: IHolder;
   symbol: string;
   amount: number;
 }
@@ -17,14 +19,15 @@ export interface IApp extends IService {
 }
 
 export interface IChainApi extends IService {
-  holders(symbol: string): Promise<IHolder[]>;
-  balances(symbol: string, holders: IHolder[]): Promise<IBalance[]>;
+  holders(symbol: string): Promise<string[]>;
+  balances(holders: string[] | IHolder[]): Promise<IHolder[]>;
+  balance(holder: string | IHolder): Promise<IHolder>;
 }
 
 export interface IState extends IService {
   holders(symbol: string): Promise<IHolder[]>;
-  balances(symbol: string): Promise<IBalance[]>;
-  update(balances: IBalance[]): Promise<void>;
+  balances(holder: IHolder | string): Promise<IBalance[]>;
+  update(holders: IHolder[]): Promise<void>;
   clear(): Promise<void>;
 }
 

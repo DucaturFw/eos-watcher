@@ -53,7 +53,7 @@ export default class ChainApi implements IChainApi {
       });
   }
 
-  holders(symbol: string, opts? : Partial<ITableRequest>): Promise<IHolder[]> {
+  holders(symbol: string, opts? : Partial<ITableRequest>): Promise<string[]> {
     return this.apiRequest<ITableResponse, ITableRequest>('get_table_rows', {
       code: this.options.tokenContract,
       scope: symbol,
@@ -65,11 +65,11 @@ export default class ChainApi implements IChainApi {
     })
   }
 
-  balances(symbol: string, holders: IHolder[], opts? : Partial<ITableRequest>): Promise<IBalance[]> {
-    return Promise.all(holders.map(holder => this.balance(symbol, holder, opts)))
+  balances(holders: string[], opts? : Partial<ITableRequest>): Promise<IHolder[]> {
+    return Promise.all(holders.map(holder => this.balance(holder, opts)))
   }
 
-  balance(symbol: string, holder : IHolder, opts? : Partial<ITableRequest>) : Promise<IBalance> {
+  balance(holder: string, opts? : Partial<ITableRequest>) : Promise<IHolder> {
     return this.apiRequest<ITableResponse, ITableRequest>('get_table_rows', {
       code: this.options.tokenContract,
       scope: holder,
@@ -80,11 +80,13 @@ export default class ChainApi implements IChainApi {
     .then(responce => {
       return responce.rows.map(name => this.eos.fc.fromBuffer('asset', name) as string)
     })
-    .then(assets => assets.find(asset => asset.endsWith(symbol)) as string)
-    .then(asset => ({
-      holder,
-      symbol,
+    .then(assets => assets.map(asset => ({
+      symbol: asset.split(' ')[1],
       amount: parseFloat(asset)
+    })))
+    .then(assets => ({
+      name: holder,
+      balances: assets
     }))
   }
 

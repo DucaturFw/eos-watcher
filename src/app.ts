@@ -7,12 +7,24 @@ export interface IAppOptions {
 }
 
 @injectable()
+/**
+ * App implements IApp interface to provide main loop functionality
+ * @see {@link IApp}
+ */
 export default class App implements IApp {
-  options: IAppOptions;
-  logger: ILogger;
-  api: IChainApi;
-  state: IState;
+  private options: IAppOptions;
+  private logger: ILogger;
+  private api: IChainApi;
+  private state: IState;
 
+  /**
+   * Creates an instance of app with auto injected dependencies.
+   * 
+   * @param opts 
+   * @param logger 
+   * @param api 
+   * @param state 
+   */
   constructor(
     @inject(types.Options) opts: { app: any },
     @inject(types.Logger) logger: ILogger,
@@ -39,12 +51,12 @@ export default class App implements IApp {
     this.logger.log("Closing eos watcher application...");
     await this.api.close();
     await this.state.close();
-    process.exit();
+    // process.exit();
   }
 
   async loop(symbol: string): Promise<boolean> {
     const holders = await this.api.holders(symbol);
-    const balances = await this.api.balances(symbol, holders);
+    const balances = await this.api.balances(holders);
     await this.state.update(balances);
     return true;
   }
