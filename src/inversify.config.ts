@@ -27,7 +27,8 @@ container
   .inSingletonScope();
 container.bind<IOptions>(types.Options).toConstantValue({
   global: {
-    symbol: process.env.SYMBOL || "DUCAT"
+    symbol: process.env.SYMBOL || "DUCAT",
+    ignoreHolders: []
   },
 
   app: {

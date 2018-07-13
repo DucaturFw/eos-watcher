@@ -28,6 +28,7 @@ export interface IState extends IService {
 export interface IOptions {
   global?: Partial<{
     symbol: string;
+    ignoreHolders: string[];
   }>;
 
   app?: Partial<{

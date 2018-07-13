@@ -10,6 +10,7 @@ export interface IChainApiOptions {
   tokenContract: string;
   tableRowsLimit: number;
   symbol: string;
+  ignoreHolders: string[];
 }
 
 export interface ITableRequest {
@@ -64,7 +65,14 @@ export default class ChainApi implements IChainApi {
       limit: this.options.tableRowsLimit,
       ...opts
     }).then(responce => {
-      return responce.rows.map(name => this.eos.fc.fromBuffer('name', name))
+      let holders = responce.rows
+      .map(name => this.eos.fc.fromBuffer('name', name));
+
+      if (this.options.ignoreHolders && this.options.ignoreHolders.length) {
+      holders = holders.filter(name => this.options.ignoreHolders.indexOf(name) === -1);
+      }
+
+      return holders
     })
   }
 
