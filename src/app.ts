@@ -18,10 +18,9 @@ export default class App implements IApp {
     @inject(types.ChainApi) api: IChainApi,
     @inject(types.State) state: IState
   ) {
-    const providenOptions = opts.app;
     this.options = {
       sleepDuration: 500,
-      ...providenOptions
+      ...opts.app
     };
 
     this.logger = logger;
@@ -41,8 +40,14 @@ export default class App implements IApp {
   }
 
   async loop(): Promise<boolean> {
-    const holders = await this.api.holders("DUCAT");
-    const balances = await this.api.balances("DUCAT", holders);
+    const holders = await this.api.holders();
+    JSON.stringify(holders, null, 2)
+      .split("\n")
+      .forEach(line => this.logger.debug(line));
+    const balances = await this.api.balances(holders);
+    JSON.stringify(balances, null, 2)
+      .split("\n")
+      .forEach(line => this.logger.debug(line));
     await this.state.update(balances);
     return true;
   }

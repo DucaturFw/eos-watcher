@@ -9,11 +9,28 @@ import RethinkState from "./rethink-state";
 config();
 
 const container = new Container();
-container.bind<ILogger>(types.Logger).to(DebugLogger);
-container.bind<IApp>(types.App).to(App);
-container.bind<IChainApi>(types.ChainApi).to(ChainApi);
-container.bind<IState>(types.State).to(RethinkState);
+container
+  .bind<ILogger>(types.Logger)
+  .to(DebugLogger)
+  .inSingletonScope();
+container
+  .bind<IApp>(types.App)
+  .to(App)
+  .inSingletonScope();
+container
+  .bind<IChainApi>(types.ChainApi)
+  .to(ChainApi)
+  .inSingletonScope();
+container
+  .bind<IState>(types.State)
+  .to(RethinkState)
+  .inSingletonScope();
 container.bind<IOptions>(types.Options).toConstantValue({
+  global: {
+    symbol: process.env.SYMBOL || "DUCAT",
+    ignoreHolders: []
+  },
+
   app: {
     sleepDuration: parseInt(process.env.SLEEP_DURATION || "5000")
   },
@@ -22,7 +39,8 @@ container.bind<IOptions>(types.Options).toConstantValue({
     rethinkHost: process.env.RETHINKDB_HOST || "localhost",
     rethinkPort: parseInt(process.env.RETHINKDB_POST || "28015"),
     rethinkDatabase: process.env.RETHINKDB_DB || "eos",
-    rethinkTable: process.env.RETHINKDB_TABLE || "balances"
+    rethinkTable: process.env.RETHINKDB_TABLE || "balances",
+    clear: !!process.env.RETHINKDB_CLEAR
   },
 
   chainApi: {
@@ -38,6 +56,8 @@ container.bind<IOptions>(types.Options).toConstantValue({
       ].join(","),
     tokenContract: process.env.TOKEN_CONTRACT || "ducaturtoken"
   },
+
+  symbols: ["DUCAT"],
 
   logger: (process.env.DEBUG || "info,warning,error,fatal").split(",").reduce((
     acc,

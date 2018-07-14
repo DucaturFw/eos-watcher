@@ -2,7 +2,6 @@ import axios, { AxiosInstance } from "axios";
 import types, { IChainApi, IHolder, IBalance, ILogger } from "./types";
 import { injectable, inject } from "inversify";
 import Eos from 'eosjs'
-const eos = new Eos({})
 
 export interface IChainApiOptions {
   timeout: number;
@@ -10,6 +9,8 @@ export interface IChainApiOptions {
   maxConnections: number;
   tokenContract: string;
   tableRowsLimit: number;
+  symbol: string;
+  ignoreHolders: string[];
 }
 
 export interface ITableRequest {
@@ -33,9 +34,11 @@ export default class ChainApi implements IChainApi {
   nodes!: string[];
   axios: AxiosInstance;
   logger: ILogger;
+  eos: Eos;
   constructor(
-    @inject(types.Options) opts: { chainApi: any },
+    @inject(types.Options) opts: { global: any, chainApi: any },
     @inject(types.Logger) logger: ILogger) {
+      this.eos = new Eos({})
       this.logger = logger;
       this.options = {
         timeout: 1000,
@@ -43,6 +46,8 @@ export default class ChainApi implements IChainApi {
         maxConnections: 10,
         tableRowsLimit: 9999,
         tokenContract: 'ducaturtoken',
+        symbol: 'EOS',
+        ...opts.global,
         ...opts.chainApi
       };
 
@@ -52,23 +57,31 @@ export default class ChainApi implements IChainApi {
       });
   }
 
-  holders(symbol: string, opts? : Partial<ITableRequest>): Promise<IHolder[]> {
+  holders(opts? : Partial<ITableRequest>): Promise<IHolder[]> {
     return this.apiRequest<ITableResponse, ITableRequest>('get_table_rows', {
       code: this.options.tokenContract,
-      scope: symbol,
+      scope: this.options.symbol,
       table: "holders",
       limit: this.options.tableRowsLimit,
       ...opts
     }).then(responce => {
-      return responce.rows.map(name => eos.fc.fromBuffer('name', name))
+      let holders = responce.rows
+      .map(name => this.eos.fc.fromBuffer('name', name));
+
+      if (this.options.ignoreHolders && this.options.ignoreHolders.length) {
+      holders = holders.filter(name => this.options.ignoreHolders.indexOf(name) === -1);
+      }
+
+      return holders
     })
   }
 
-  balances(symbol: string, holders: IHolder[], opts? : Partial<ITableRequest>): Promise<IBalance[]> {
-    return Promise.all(holders.map(holder => this.balance(symbol, holder, opts)))
+  balances(holders: IHolder[], opts? : Partial<ITableRequest>): Promise<IBalance[]> {
+    return Promise.all(holders.map(holder => this.balance(holder, opts)))
   }
 
-  balance(symbol: string, holder : IHolder, opts? : Partial<ITableRequest>) : Promise<IBalance> {
+  balance(holder : IHolder, opts? : Partial<ITableRequest>) : Promise<IBalance> {
+    this.logger.debug('balances call: ' + holder)
     return this.apiRequest<ITableResponse, ITableRequest>('get_table_rows', {
       code: this.options.tokenContract,
       scope: holder,
@@ -77,12 +90,11 @@ export default class ChainApi implements IChainApi {
       ...opts
     })
     .then(responce => {
-      return responce.rows.map(name => eos.fc.fromBuffer('asset', name) as string)
+      return responce.rows.map(name => this.eos.fc.fromBuffer('asset', name) as string)
     })
-    .then(assets => assets.find(asset => asset.endsWith(symbol)) as string)
+    .then(assets => assets.find(asset => asset.endsWith(this.options.symbol)) as string)
     .then(asset => ({
       holder,
-      symbol,
       amount: parseFloat(asset)
     }))
   }

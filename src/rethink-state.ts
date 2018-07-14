@@ -8,6 +8,7 @@ export interface IRethinkStateOptions {
   rethinkPort: number;
   rethinkDatabase: string;
   rethinkTable: string;
+  clear: boolean;
 }
 export interface IBalanceTable {
   [holderAndBalance: string]: IBalance;
@@ -18,14 +19,6 @@ export default class RethinkState implements IState {
   options: IRethinkStateOptions;
   logger: ILogger;
   connection?: Connection;
-
-  private reduceArrayToTable(array: IBalance[]) {
-    return array.reduce<IBalanceTable>(this.reduceArrayToTableFunc, {});
-  }
-  private reduceArrayToTableFunc(table: IBalanceTable, balance: IBalance) {
-    table[balance.holder + balance.symbol] = balance;
-    return table;
-  }
 
   private get db() {
     return r.db(this.options.rethinkDatabase);
@@ -39,10 +32,6 @@ export default class RethinkState implements IState {
     return this.table.orderBy("amount");
   }
 
-  private get balanceHolders() {
-    return this.table.getField("holder");
-  }
-
   constructor(
     @inject(types.Logger) logger: ILogger,
     @inject(types.Options) opts: { state: any }
@@ -54,27 +43,25 @@ export default class RethinkState implements IState {
       rethinkPort: 28015,
       rethinkDatabase: "eos",
       rethinkTable: "balances",
+      clear: false,
       ...providenOptions
     };
   }
 
-  async holders(symbol: string): Promise<string[]> {
+  async holders(): Promise<string[]> {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
-    const cursor = await this.balanceHolders
-      .filter(r.row("symbol").eq(symbol))
-      .run(this.connection);
-    return (await cursor.toArray()) as string[];
+
+    const cursor = await this.table.getField("holder").run(this.connection);
+    return cursor.toArray();
   }
 
-  async balances(symbol: string): Promise<IBalance[]> {
+  async balances(): Promise<IBalance[]> {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
-    return (await this.balancesByAmount
-      .filter(r.row("symbol").eq(symbol))
-      .run(this.connection)).toArray();
+    return (await this.balancesByAmount.run(this.connection)).toArray();
   }
 
   async update(balances: IBalance[]) {
@@ -82,41 +69,31 @@ export default class RethinkState implements IState {
       throw new Error("rethink is unavailable");
     }
 
-    let a = await this.table.run(this.connection);
-    let b = await a.toArray<IBalance>();
-    this.logger.debug(JSON.stringify(b, null, 2));
-    let state = b
-      .map((item: any) => {
-        delete item.id;
-        return item;
+    this.logger.debug(
+      `write balances in ${this.options.rethinkDatabase}::${this.options
+        .rethinkTable}`
+    );
+
+    const result = await this.table
+      .insert(balances, {
+        conflict: "update"
       })
-      .reduce(this.reduceArrayToTableFunc, {} as IBalanceTable);
-    let providenState = this.reduceArrayToTable(balances);
+      .run(this.connection);
 
-    this.logger.debug(state);
+    this.logger.info(
+      `Replaced: ${result.replaced}, Inserted: ${result.inserted}`
+    );
+  }
 
-    for (let key in state) {
-      if (!providenState[key]) {
-        //assert
-        throw new Error("WTF? Where is holder? :)");
-      }
-
-      if (!deep(state[key], providenState[key])) {
-        this.logger.info(`Update holder ${state[key].holder} balance`);
-        await this.table
-          .filter({
-            holder: providenState[key].holder,
-            symbol: providenState[key].symbol
-          })
-          .update(providenState[key])
-          .run(this.connection);
-      }
-
-      delete providenState[key];
-    }
-
-    this.logger.info(`Insert ${Object.keys(providenState).length} balances`);
-    await this.table.insert(Object.values(providenState)).run(this.connection);
+  async clear() {
+    await this.dropTable(
+      this.options.rethinkDatabase,
+      this.options.rethinkTable
+    );
+    await this.checkOrCreateTable(
+      this.options.rethinkDatabase,
+      this.options.rethinkTable
+    );
   }
 
   async setup() {
@@ -126,13 +103,19 @@ export default class RethinkState implements IState {
     });
 
     await this.checkOrCreateDatabase(this.options.rethinkDatabase);
-    await this.dropTable(
-      this.options.rethinkDatabase,
-      this.options.rethinkTable
-    );
+
+    if (this.options.clear) {
+      await this.dropTable(
+        this.options.rethinkDatabase,
+        this.options.rethinkTable
+      );
+    }
     await this.checkOrCreateTable(
       this.options.rethinkDatabase,
-      this.options.rethinkTable
+      this.options.rethinkTable,
+      {
+        primary_key: "holder"
+      }
     );
   }
 
@@ -154,7 +137,11 @@ export default class RethinkState implements IState {
     }
   }
 
-  private async checkOrCreateTable(db: string, table: string) {
+  private async checkOrCreateTable(
+    db: string,
+    table: string,
+    opts?: r.TableOptions
+  ) {
     if (!this.connection) {
       throw new Error("rethink is unavailable");
     }
@@ -166,7 +153,7 @@ export default class RethinkState implements IState {
     if (availableTables.indexOf(table) === -1) {
       await r
         .db(db)
-        .tableCreate(table)
+        .tableCreate(table, opts)
         .run(this.connection);
     }
   }
