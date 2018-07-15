@@ -28,7 +28,7 @@ container
 container.bind<IOptions>(types.Options).toConstantValue({
   global: {
     symbol: process.env.SYMBOL || "DUCAT",
-    ignoreHolders: []
+    ignoreHolders: (process.env.IGNORE_HOLDERS || "").split(",")
   },
 
   app: {
@@ -44,6 +44,7 @@ container.bind<IOptions>(types.Options).toConstantValue({
   },
 
   chainApi: {
+    timeout: parseInt(process.env.CHAIN_API_TIMEOUT || "2000"),
     endpoint:
       process.env.CHAIN_ENDPOINT ||
       [
@@ -54,10 +55,10 @@ container.bind<IOptions>(types.Options).toConstantValue({
         "node.eosvenezuela.io:8888",
         "peer.test.alohaeos.com:8888"
       ].join(","),
-    tokenContract: process.env.TOKEN_CONTRACT || "ducaturtoken"
+    maxConnections: parseInt(process.env.CHAIN_API_MAX_CONNECTIONS || "10"),
+    tokenContract: process.env.TOKEN_CONTRACT || "ducaturtoken",
+    tableRowsLimit: parseInt(process.env.CHAIN_API_LIMIT || "9999")
   },
-
-  symbols: ["DUCAT"],
 
   logger: (process.env.DEBUG || "info,warning,error,fatal").split(",").reduce((
     acc,
