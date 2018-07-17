@@ -27,12 +27,12 @@
     "signale": "^1.2.1",
     "typescript": "^2.9.2"
   },
-  "optionalDependencies": {
+  "devDependencies": {
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.4",
     "chai": "^4.1.2",
-    "eosic": "^0.0.1",
-    "eoscontracts": "^0.0.1",
+    "eosic": "git+https://git@github.com/DucaturFw/eosic.git",
+    "eoscontracts": "git+https://git@github.com/DucaturFw/Ducat-EOS.git",
     "mocha": "^5.2.0",
     "nodemon": "^1.17.5",
     "ts-node": "^7.0.0"
