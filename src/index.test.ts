@@ -286,12 +286,20 @@ describe("Eos Watcher", async () => {
     });
 
     it("should insert new holder", async () => {
+      const stateHoldersBefore = await state().balances();
+      assert.notInclude(
+        stateHoldersBefore.map(balance => balance.holder),
+        "account2"
+      );
       await token.transfer("eosio", "account2", "1000.0000 TST", "account2-1", {
         authorization: ["eosio"]
       });
       await app().loop();
-      const stateHolders = await state().balances();
-      assert.lengthOf(stateHolders, 3);
+      const stateHoldersAfter = await state().balances();
+      assert.include(
+        stateHoldersAfter.map(balance => balance.holder),
+        "account2"
+      );
     });
   });
 });
