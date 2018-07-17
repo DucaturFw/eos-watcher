@@ -48,7 +48,7 @@ describe("Eos Watcher", async () => {
   before(async () => {
     // run dev eos blockchain
     project = await start({
-      cwd: path.resolve("../eoscontracts"),
+      cwd: path.resolve("./node_modules/eoscontracts"),
       logs: false
     });
 
